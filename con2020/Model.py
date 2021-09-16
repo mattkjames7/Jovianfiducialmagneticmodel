@@ -1076,10 +1076,8 @@ class Model(object):
 			depending upon how the model was initialized, where "n" is
 			the number of elements contained in the input arguments.
 		'''
-		t0 = time.time()
 		#rotate and check input SIII coordinates to current sheet coords
 		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
-		t1 = time.time()
 		
 		#create the output arrays
 		n = np.size(rho)
@@ -1091,24 +1089,13 @@ class Model(object):
 			
 		#call the model function
 		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
-		t2 = time.time()
 		   
 		#return to SIII coordinates
 		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
-		t3 = time.time()
 		#turn into a nx3 array
 		Bout[:,0] = B0
 		Bout[:,1] = B1
 		Bout[:,2] = B2
-		t4 = time.time()
-		
-		print('-------------------------------------------------------')
-		print('Field Timing:')
-		print('-------------------------------------------------------')
-		print('Coordinate conversion: {:f}μs ({:6.2f}%)'.format((t1-t0)*1e6,100*(t1-t0)/(t4-t0)))
-		print('Call Model: {:f}μs ({:6.2f}%)'.format((t2-t1)*1e6,100*(t2-t1)/(t4-t0)))
-		print('Output Conversion: {:f}μs ({:6.2f}%)'.format((t3-t2)*1e6,100*(t3-t2)/(t4-t0)))
-		print('Output Array Fill: {:f}μs ({:6.2f}%)'.format((t4-t3)*1e6,100*(t4-t3)/(t4-t0)))
-		print('Total: {:f}μs'.format((t4-t0)*1e6))
+
 
 		return Bout
