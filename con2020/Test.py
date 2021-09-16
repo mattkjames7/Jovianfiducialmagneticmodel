@@ -272,9 +272,9 @@ def TestTimingIntVsAn(n=1000):
 	MA = Model(equation_type='analytic',CartesianIn=False,CartesianOut=False)
 	
 	#and the model inputs (positions)
-	r = data.r[0][:n]
-	theta = data.SYS3_COLAT_RADS[0][:n]
-	phi = data.SYS3_ELONG_RADS[0][:n]
+	r = data.r[0][:n].astype('float64')
+	theta = data.SYS3_COLAT_RADS[0][:n].astype('float64')
+	phi = data.SYS3_ELONG_RADS[0][:n].astype('float64')
 	
 	print('Testing {:d} model vectors'.format(n))
 
@@ -322,9 +322,9 @@ def TestTimingIntVsAnSingle(n=1000):
 	data = readsav(fname).test
 	
 	#and the model inputs (positions)
-	r = data.r[0][:n]
-	theta = data.SYS3_COLAT_RADS[0][:n]
-	phi = data.SYS3_ELONG_RADS[0][:n]
+	r = data.r[0][:n].astype('float64')
+	theta = data.SYS3_COLAT_RADS[0][:n].astype('float64')
+	phi = data.SYS3_ELONG_RADS[0][:n].astype('float64')
 	
 	#create the new model object
 	MI = Model(equation_type='integral',CartesianIn=False,CartesianOut=False)
