@@ -2,8 +2,10 @@ import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
 from ._Analytic import _AnalyticEdwards,_AnalyticEdwardsScalar,_AnalyticEdwardsVector
+from ._Conv import _ConvInputCart,_ConvInputPol,_ConvOutputCart,_ConvOutputPol
 from ._Integrate import _Integrate
 import time
+from numba import njit,jit
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -241,9 +243,9 @@ class Model(object):
 		self._CartOut = value		
 		#set the output functions
 		if self._CartOut:
-			self._OutputConv = self._ConvOutputCart
+			self._OutputConv = _ConvOutputCart
 		else:
-			self._OutputConv = self._ConvOutputPol		
+			self._OutputConv = _ConvOutputPol		
 						
 
 	@property
@@ -278,12 +280,12 @@ class Model(object):
 			if self._err_chk:
 				self._InputConv = self._ConvInputCartSafe
 			else:
-				self._InputConv = self._ConvInputCart
+				self._InputConv = _ConvInputCart
 		else:
 			if self._err_chk:
 				self._InputConv = self._ConvInputPolSafe
 			else:
-				self._InputConv = self._ConvInputPol		
+				self._InputConv = _ConvInputPol		
 		
 	
 	def _UpdateBessel(self):
@@ -1071,7 +1073,7 @@ class Model(object):
 		'''
 		t0 = time.time()
 		#rotate and check input SIII coordinates to current sheet coords
-		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2)
+		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2,self._cosxp,self._sinxp,self._cosxt,self._sinxt)
 		t1 = time.time()
 		
 		#create the output arrays
@@ -1087,7 +1089,7 @@ class Model(object):
 		t2 = time.time()
 		   
 		#return to SIII coordinates
-		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz)
+		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz,self._cosxp,self._sinxp,self._cosxt,self._sinxt)
 		t3 = time.time()
 		#turn into a nx3 array
 		Bout[:,0] = B0
