@@ -66,9 +66,9 @@ def Test():
 	dayno = dayno[use]
 	
 	#and the model inputs (positions)
-	r = data.r[0][use]
-	theta = data.SYS3_COLAT_RADS[0][use]
-	phi = data.SYS3_ELONG_RADS[0][use]
+	r = data.r[0][use].astype('float64')
+	theta = data.SYS3_COLAT_RADS[0][use].astype('float64')
+	phi = data.SYS3_ELONG_RADS[0][use].astype('float64')
 	
 	#model fields to test against
 	con20_analytic= data.CS_FIELD_ANALYTIC[0]
