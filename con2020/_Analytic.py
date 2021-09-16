@@ -1,5 +1,7 @@
 import numpy as np
+from numba import jit,njit
 
+@njit
 def _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2):
 	'''
 	Small rho approximations calculated using equations 9a and 9b of 
@@ -102,7 +104,10 @@ def _SmallRhoApprox(rho,z,zmd,zpd,mui2,a2,D):
 
 	return Brho,Bz
 	
-def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
+#scalar and vector versions of this function exist because the current 
+#version of numba can't deal with numpy.clip()
+@njit
+def _LargeRhoApproxEdwardsScalar(rho,z,zmd,zpd,mui2,a2,D):
 	'''
 	Small rho approximations calculated using equations 13a and 13b of 
 	Edwards et al 2001.
@@ -143,10 +148,80 @@ def _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D):
 	f1cubed = f1*f1*f1
 	f2cubed = f2*f2*f2	
 	
+	#this will be replaced with z.clip(max=D,min=-D)
+	#once number supports it
+	zclip  = z + 0.0
+	if zclip > D:
+		zclip = np.float64(D)
+	elif zclip < -D:
+		zclip = np.float64(-D)
+	
 	#equation 13a
 	terma0 = (1/rho)*(f1 - f2)
 	terma1 = (rho*a2/4)*(1/f2cubed - 1/f1cubed)
-	terma2 = (2.0/rho)*z.clip(max=D,min=-D)
+	terma2 = (2.0/rho)*zclip
+	Brho = mui2*(terma0 + terma1 + terma2)
+	
+	#equation 13b
+	termb0 = np.log((zpd + f2)/(zmd + f1))
+	termb1 = (a2/4)*(zpd/f2cubed - zmd/f1cubed)
+	Bz = mui2*(termb0 + termb1)
+	
+	return Brho,Bz
+
+@njit
+def _LargeRhoApproxEdwardsVector(rho,z,zmd,zpd,mui2,a2,D):
+	'''
+	Small rho approximations calculated using equations 13a and 13b of 
+	Edwards et al 2001.
+	
+	Inputs
+	======
+	rho : float
+		rho current sheet coordinate (Rj).
+	z : float
+		z current sheet coordinate (Rj).
+	zmd : float
+		z - d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	zpd : float
+		z + d, where z is the z current sheet coordinate and d is the
+		current sheet half-thickness (Rj).
+	mui2 : float
+		Current sheet current density (nT).
+	a2 : float
+		Inner/Outer edge of current disk squared (Rj^2).
+	D : float
+		Current sheet half-thickness (Rj).
+			
+	Returns
+	=======
+	Brho : float
+		rho-component of the magnetic field.
+	Bz : float
+		z-component of the magnetic field.	
+	
+	'''	
+	#some common variables
+	zmd2 = zmd*zmd
+	zpd2 = zpd*zpd
+	rho2 = rho*rho
+	f1 = np.sqrt(zmd2 + rho2)
+	f2 = np.sqrt(zpd2 + rho2)
+	f1cubed = f1*f1*f1
+	f2cubed = f2*f2*f2	
+	
+	#this will be replaced with z.clip(max=D,min=-D)
+	#once number supports it
+	zclip  = z + 0.0
+	zclip[zclip > D] = D
+	zclip[zclip < -D] = -D
+	
+	
+	#equation 13a
+	terma0 = (1/rho)*(f1 - f2)
+	terma1 = (rho*a2/4)*(1/f2cubed - 1/f1cubed)
+	terma2 = (2.0/rho)*zclip
 	Brho = mui2*(terma0 + terma1 + terma2)
 	
 	#equation 13b
@@ -245,8 +320,91 @@ def _AnalyticOriginal(rho,z,D,a,mui2):
 
 	return Brho,Bz
 	
-	
+#2-3 times quicker now with numba
 def _AnalyticEdwards(rho,z,D,a,mui2):
+	'''
+	This function will calculate the model using the Edwards et al., 
+	2001 equations. 
+	
+	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
+	
+	Inputs
+	======
+	rho : float
+		This should be a numpy.ndarray of the rho coordinate.
+	z : float
+		This should also be a numpy.ndarray of the z coordinate.
+	D : float
+		Constant half-thickness of the current sheet in Rj.
+	a : float
+		Inner edge of the current sheet in Rj.
+	mui2 : float
+		mu_0 * I_0/2 - current sheet current density in nT.
+		
+	Returns
+	=======
+	Brho : float
+		array of B in rho direction
+	Bz : float
+		array of B in z direction
+	
+	'''
+
+	if np.size(rho) == 1:
+		return _AnalyticEdwardsScalar(rho,z,D,a,mui2)
+	else:
+		return _AnalyticEdwardsVector(rho,z,D,a,mui2)
+	
+def _AnalyticEdwardsVector(rho,z,D,a,mui2):
+	'''
+	This function will calculate the model using the Edwards et al., 
+	2001 equations. 
+	
+	https://www.sciencedirect.com/science/article/abs/pii/S0032063300001641
+	
+	Inputs
+	======
+	rho : float
+		This should be a numpy.ndarray of the rho coordinate.
+	z : float
+		This should also be a numpy.ndarray of the z coordinate.
+	D : float
+		Constant half-thickness of the current sheet in Rj.
+	a : float
+		Inner edge of the current sheet in Rj.
+	mui2 : float
+		mu_0 * I_0/2 - current sheet current density in nT.
+		
+	Returns
+	=======
+	Brho : float
+		array of B in rho direction
+	Bz : float
+		array of B in z direction
+	
+	'''
+	#these values appear to be used for all parts of the process
+	#so let's calculate them all
+	zpd = z + D
+	zmd = z - D
+	a2 = a*a
+	
+	#use rho and a to decide whether to use large or small approx
+	lrg = np.where(rho >= a)[0]
+	sml = np.where(rho < a)[0]
+		
+	#create output arrays - numba doesn't seem to support this
+	Brho = np.zeros(rho.size,dtype='float64')
+	Bz = np.zeros(rho.size,dtype='float64')
+		
+	#fill them
+	Brho[lrg],Bz[lrg] = _LargeRhoApproxEdwardsVector(rho[lrg],z[lrg],zmd[lrg],zpd[lrg],mui2,a2,D)
+	Brho[sml],Bz[sml] = _SmallRhoApproxEdwards(rho[sml],zmd[sml],zpd[sml],mui2,a2)
+	
+	return Brho,Bz
+	
+@njit
+def _AnalyticEdwardsScalar(rho,z,D,a,mui2):
 	'''
 	This function will calculate the model using the Edwards et al., 
 	2001 equations. 
@@ -281,27 +439,12 @@ def _AnalyticEdwards(rho,z,D,a,mui2):
 	a2 = a*a
 	
 	#choose scalar or vectorized version of the code
-	if np.size(rho) == 1:
-		if rho >= a:
-			Brho,Bz = _LargeRhoApproxEdwards(rho,z,zmd,zpd,mui2,a2,D)
-		else:
-			Brho,Bz = _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
-			
+	if rho >= a:
+		return _LargeRhoApproxEdwardsScalar(rho,z,zmd,zpd,mui2,a2,D)
 	else:
-
-		#use rho and a to decide whether to use large or small approx
-		lrg = np.where(rho >= a)[0]
-		sml = np.where(rho < a)[0]
-		
-		#create output arrays
-		Brho = np.zeros(rho.size,dtype='float64')
-		Bz = np.zeros(rho.size,dtype='float64')
-		
-		#fill them
-		Brho[lrg],Bz[lrg] = _LargeRhoApproxEdwards(rho[lrg],z[lrg],zmd[lrg],zpd[lrg],mui2,a2,D)
-		Brho[sml],Bz[sml] = _SmallRhoApproxEdwards(rho[sml],zmd[sml],zpd[sml],mui2,a2)
+		return _SmallRhoApproxEdwards(rho,zmd,zpd,mui2,a2)
 	
-	return Brho,Bz
+
 	
 def _Analytic(rho,z,D,a,mui2,Edwards=True):
 	'''

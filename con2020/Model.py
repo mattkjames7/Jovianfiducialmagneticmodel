@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
-from ._Analytic import _AnalyticEdwards,_FiniteEdwards
+from ._Analytic import _AnalyticEdwards,_AnalyticEdwardsScalar,_AnalyticEdwardsVector
 from ._Integrate import _Integrate
 import time
 
@@ -168,14 +168,6 @@ class Model(object):
 		if (np.isfinite(self.xp) == False):
 			raise SystemExit("'xp' should be finite")	
 			
-		#set the analytic function to use
-		self._AnalyticFunc = _AnalyticEdwards
-			
-		#set the analytic function to use for the outer bit of the current sheet
-		self._Finite = _FiniteEdwards
-		
-			
-
 				
 
 
@@ -770,13 +762,13 @@ class Model(object):
 		'''
 		t0 = time.time()
 		#calculate the analytic solution first for Brho and Bz
-		Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+		Brho,Bz = _AnalyticEdwards(rho,z,self.d,self.r0,self.mu_i)
 		t1 = time.time()
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
 		t2 = time.time()
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
 		t3 = time.time()
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
@@ -976,7 +968,7 @@ class Model(object):
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
@@ -1021,7 +1013,7 @@ class Model(object):
 				Brho,Bz = self._IntegralScalar(rho,abs_z,z)
 			else:
 				#analytical
-				Brho,Bz = self._AnalyticFunc(rho,z,self.d,self.r0,self.mu_i)
+				Brho,Bz = _AnalyticEdwardsScalar(rho,z,self.d,self.r0,self.mu_i)
 
 		else:
 			#this would be the vectorized version
@@ -1037,14 +1029,14 @@ class Model(object):
 				Brho[Iint],Bz[Iint] = self._IntegralVector(rho[Iint],abs_z[Iint],z[Iint])
 			
 			if Iana.size > 0:
-				Brho[Iana],Bz[Iana] = self._AnalyticFunc(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
+				Brho[Iana],Bz[Iana] = _AnalyticEdwardsVector(rho[Iana],z[Iana],self.d,self.r0,self.mu_i)
 
 
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
-		Brho_fin,Bz_fin = self._Finite(rho,z,self.d,self.r1,self.mu_i)
+		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
