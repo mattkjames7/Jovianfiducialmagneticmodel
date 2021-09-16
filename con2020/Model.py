@@ -3,11 +3,11 @@ from ._Switcher import _Switcher
 from ._Analytic import _AnalyticEdwards,_AnalyticEdwardsScalar,_AnalyticEdwardsVector
 from ._Conv import _ConvInputCart,_ConvInputPol,_ConvOutputCart,_ConvOutputPol
 from ._Integrate import _Integrate
-from ._Bphi import _Bphi
+from ._Bphi import _BphiScalar,_BphiVector
 from ._Integral import _IntegralScalar,_IntegralVector
 import time
 from numba import njit,jit
-
+from scipy.special import j0
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -480,22 +480,11 @@ class Model(object):
 			Azimuthal component of the magnetic field.
 
 		'''
-		Bphi = 2.7975*self.i_rho/rho
-		
-		if np.size(rho) == 1:
-			if abs_z < self.d:
-				Bphi *= (abs_z/self.d)
-			if z > 0:
-				Bphi = -Bphi
+		n = np.size(rho)
+		if n == 1:
+			return _BphiScalar(rho,abs_z,z,self.i_rho,self.d)
 		else:
-			ind = np.where(abs_z < self.d)[0]
-			if ind.size > 0:
-				Bphi[ind] *= (abs_z[ind]/self.d)
-			ind = np.where(z > 0)[0]
-			if ind.size > 0:
-				Bphi[ind] = -Bphi[ind]
-		
-		return Bphi
+			return _BphiVector(rho,abs_z,z,self.i_rho,self.d)
 		
 	def _Analytic(self,rho,abs_z,z):
 		'''		
@@ -533,7 +522,7 @@ class Model(object):
 		Brho,Bz = _AnalyticEdwards(rho,z,self.d,self.r0,self.mu_i)
 
 		#calculate Bphi
-		Bphi = _Bphi(rho,abs_z,z,self.i_rho,self.d)
+		Bphi = self._Bphi(rho,abs_z,z)
 
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
@@ -676,7 +665,7 @@ class Model(object):
 			Brho,Bz = self._IntegralVector(rho,abs_z,z)
 		
 		#calculate Bphi
-		Bphi = _Bphi(rho,abs_z,z,self.i_rho,self.d)
+		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
@@ -744,7 +733,7 @@ class Model(object):
 
 
 		#calculate Bphi
-		Bphi = _Bphi(rho,abs_z,z,self.i_rho,self.d)
+		Bphi = self._Bphi(rho,abs_z,z)
 		
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
