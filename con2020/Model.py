@@ -1,12 +1,13 @@
 import numpy as np
-from scipy.special import jv,j0,j1
 from ._Switcher import _Switcher
 from ._Analytic import _AnalyticEdwards,_AnalyticEdwardsScalar,_AnalyticEdwardsVector
 from ._Conv import _ConvInputCart,_ConvInputPol,_ConvOutputCart,_ConvOutputPol
 from ._Integrate import _Integrate
+from ._Bphi import _Bphi
+from ._Integral import _IntegralScalar,_IntegralVector
 import time
 from numba import njit,jit
-from ._Integral import _IntegralScalar,_IntegralVector
+
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -532,7 +533,7 @@ class Model(object):
 		Brho,Bz = _AnalyticEdwards(rho,z,self.d,self.r0,self.mu_i)
 
 		#calculate Bphi
-		Bphi = self._Bphi(rho,abs_z,z)
+		Bphi = _Bphi(rho,abs_z,z,self.i_rho,self.d)
 
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
@@ -590,35 +591,6 @@ class Model(object):
 					self._lambda_int_brho[zc],self._lambda_int_bz[zc],
 					self._beselj_rho_r0_0[zc],self._beselj_z_r0_0[zc],
 					self._dlambda_brho,self._dlambda_bz)
-		
-		#do the integration
-		beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho)
-		beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho)
-		if (abs_z > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-			brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
-							*np.sinh(self.d*self._lambda_int_brho[zc]) \
-							*np.exp(-abs_z*self._lambda_int_brho[zc]) \
-							/self._lambda_int_brho[zc]
-			bz_int_funct   = beselj_z_rho1_0 *self._beselj_z_r0_0[zc] \
-							*np.sinh(self.d*self._lambda_int_bz[zc]) \
-							*np.exp(-abs_z*self._lambda_int_bz[zc]) \
-							/self._lambda_int_bz[zc]  
-			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
-			if z < 0:
-				Brho = -Brho
-		else:
-			brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
-							*(np.sinh(z*self._lambda_int_brho[zc]) \
-							*np.exp(-self.d*self._lambda_int_brho[zc])) \
-							/self._lambda_int_brho[zc]
-			bz_int_funct   = beselj_z_rho1_0  *self._beselj_z_r0_0[zc] \
-							*(1.0 -np.cosh(z*self._lambda_int_bz[zc]) \
-							*np.exp(-self.d*self._lambda_int_bz[zc])) \
-							/self._lambda_int_bz[zc]
-			Brho = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)#
-		Bz = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
-
-		return Brho,Bz
 
 
 	def _IntegralVector(self,rho,abs_z,z):
@@ -665,35 +637,7 @@ class Model(object):
 					self._lambda_int_brho[zc],self._lambda_int_bz[zc],
 					self._beselj_rho_r0_0[zc],self._beselj_z_r0_0[zc],
 					self._dlambda_brho,self._dlambda_bz)
-				# for zi in range(0,n_ind_case):
-					# ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
 
-					# beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho[ind_for_integral])
-					# beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho[ind_for_integral] )
-					# if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-						# brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
-										# *np.sinh(self.d*self._lambda_int_brho[zc]) \
-										# *np.exp(-abs_z[ind_for_integral]*self._lambda_int_brho[zc]) \
-										# /self._lambda_int_brho[zc]
-						# bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
-										# *np.sinh(self.d*self._lambda_int_bz[zc]) \
-										# *np.exp(-abs_z[ind_for_integral]*self._lambda_int_bz[zc]) \
-										# /self._lambda_int_bz[zc]
-						# Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
-						# if z[ind_for_integral] < 0:
-							# Brho[ind_for_integral] = -Brho[ind_for_integral]
-					# else:
-						# brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
-										# *(np.sinh(z[ind_for_integral]*self._lambda_int_brho[zc]) \
-										# *np.exp(-self.d*self._lambda_int_brho[zc])) \
-										# /self._lambda_int_brho[zc]
-						# bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
-										# *(1.0 -np.cosh(z[ind_for_integral]*self._lambda_int_bz[zc]) \
-										# *np.exp(-self.d*self._lambda_int_bz[zc])) \
-										# /self._lambda_int_bz[zc]  
-						# Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
-					# Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
-		
 		return Brho,Bz			
 	
 			
@@ -732,7 +676,7 @@ class Model(object):
 			Brho,Bz = self._IntegralVector(rho,abs_z,z)
 		
 		#calculate Bphi
-		Bphi = self._Bphi(rho,abs_z,z)
+		Bphi = _Bphi(rho,abs_z,z,self.i_rho,self.d)
 		
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
@@ -800,7 +744,7 @@ class Model(object):
 
 
 		#calculate Bphi
-		Bphi = self._Bphi(rho,abs_z,z)
+		Bphi = _Bphi(rho,abs_z,z,self.i_rho,self.d)
 		
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
