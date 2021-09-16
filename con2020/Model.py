@@ -318,7 +318,7 @@ class Model(object):
 			self._beselj_z_r0_0.append(j0(self._lambda_int_bz[i]*self.r0))		
 					
 		
-	def _ConvInputCartSafe(self,x0,y0,z0):
+	def _ConvInputCartSafe(self,x0,y0,z0,cosxp,sinxp,cosxt,sinxt):
 		'''
 		Converts input coordinates from Cartesian right-handed System 
 		III to current sheet coordinates - with error checking.
@@ -357,126 +357,10 @@ class Model(object):
 		self._CheckInputCart(x0,y0,z0)
 		
 		#now convert it
-		return self._ConvInputCart(x0,y0,z0)
+		return _ConvInputCart(x0,y0,z0,cosxp,sinxp,cosxt,sinxt)
+
 	
-	def _ConvInputCart(self,x0,y0,z0):
-		'''
-		Converts input coordinates from Cartesian right-handed System 
-		III to current sheet coordinates.
-		
-		Inputs
-		======
-		x0 : float
-			System III x-coordinate (Rj).
-		y0 : float
-			System III y-coordinate (Rj).
-		z0 : float
-			System III z-coordinate (Rj).
-			
-		Returns
-		=======
-		x1 : float
-			x current sheet coordinate
-		y1 : float
-			y current sheet coordinate
-		z1 : float
-			z current sheet coordinate
-		rho1 : float
-			distance from z-axis (Rj).
-		abs_z1 : float
-			abs(z1) (Rj).
-		cost : float
-			cos(theta) - where theta is the colatitude
-		sint : float
-			sin(theta)
-		cosp : float
-			cos(phi) - where phi is east longitude
-		sinp : float	
-			sin(phi)
-		'''
-
-		rho0_sq = x0*x0 + y0*y0
-		rho0 = np.sqrt(rho0_sq)
-		r = np.sqrt(rho0_sq + z0**2)
-
-		cost = z0/r
-		sint = rho0/r
-		sinp = y0/rho0
-		cosp = x0/rho0
-
-		#rotate x and y to align with the current sheet longitude
-		x = rho0*(cosp*self._cosxp + sinp*self._sinxp)
-		y1 = rho0*(sinp*self._cosxp - cosp*self._sinxp)
-
-		#rotate about y axis to align with current sheet
-		x1 = x*self._cosxt + z0*self._sinxt
-		z1 = z0*self._cosxt - x*self._sinxt	
-
-		#some other bits we need for the model
-		rho1 = np.sqrt(x1*x1 + y1*y1)
-		abs_z1 = np.abs(z1)
-			
-		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp
-		
-	def _ConvOutputCart(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
-		'''
-		Convert the output magnetic field from cylindrical current 
-		sheet coordinates to Cartesian right-handed System III
-		coordinates.
-		
-		Inputs
-		======
-		cost : float (dummy)
-			cos(theta) - where theta is the colatitude
-		sint : float (dummy)
-			sin(theta)
-		cosp : float (dummy)
-			cos(phi) - where phi is east longitude
-		sinp : float (dummy)	
-			sin(phi)
-		x1 : float
-			x-position in current sheet coords (Rj).
-		y1 : float
-			y-position in current sheet coords (Rj).
-		rho1 : float
-			distance from z-axis (Rj).
-		Brho1 : float	
-			Rho component of magnetic field (nT).
-		Bphi1 : float
-			Phi (azimuthal) component of the magnetic field (nT).
-		Bz1 : float
-			z component of the magnetic field (nT).
-			
-		Returns
-		=======
-		Bx0 : float
-			x-component of magnetic field in right-handed System III
-			coordinates (nT).
-		By0 : float
-			y-component of magnetic field in right-handed System III
-			coordinates (nT).
-		Bz0 : float
-			z-component of magnetic field in right-handed System III
-			coordinates (nT).
-			
-		
-		'''
-		cosphi1 = x1/rho1
-		sinphi1 = y1/rho1
-		
-		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
-		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
-
-		Bx = Bx1*self._cosxt - Bz1*self._sinxt
-		Bz0 = Bx1*self._sinxt + Bz1*self._cosxt		
-
-		Bx0 = Bx*self._cosxp - By1*self._sinxp
-		By0 = By1*self._cosxp + Bx*self._sinxp	
-	
-		return Bx0,By0,Bz0
-		
-	
-	def _ConvInputPolSafe(self,r,theta,phi):
+	def _ConvInputPolSafe(self,r,theta,phi,cosxp,sinxp,cosxt,sinxt):
 		'''
 		Converts input coordinates from spherical polar right-handed 
 		System III to Cartesian current sheet coordinates - with error
@@ -516,128 +400,8 @@ class Model(object):
 		self._CheckInputPol(r,theta,phi)
 		
 		#now convert coordinates
-		return self._ConvInputPol(r,theta,phi)
-		
-	def _ConvInputPol(self,r,theta,phi):
-		'''
-		Converts input coordinates from spherical polar right-handed 
-		System III to Cartesian current sheet coordinates.
-		
-		Inputs
-		======
-		r : float
-			System III radial distance (Rj).
-		theta : float
-			System III colatitude (rad).
-		phi : float
-			System III east longitude (rad).
-			
-		Returns
-		=======
-		x1 : float
-			x current sheet coordinate
-		y1 : float
-			y current sheet coordinate
-		z1 : float
-			z current sheet coordinate
-		rho1 : float
-			distance from z-axis (Rj).
-		abs_z1 : float
-			abs(z1) (Rj).
-		cost : float
-			cos(theta) - where theta is the colatitude
-		sint : float
-			sin(theta)
-		cosp : float
-			cos(phi) - where phi is east longitude
-		sinp : float	
-			sin(phi)
-		'''		
-	
-		sint = np.sin(theta)
-		cost = np.cos(theta)
-		sinp = np.sin(phi)
-		cosp = np.cos(phi)
+		return _ConvInputPol(r,theta,phi,cosxp,sinxp,cosxt,sinxt)
 
-		#surprisingly this is slightly (~20%) quicker than 
-		#x = r*sint*np.cos(phi - self._dipole_shift) etc.
-		x = r*sint*(cosp*self._cosxp + sinp*self._sinxp)
-		y1 = r*sint*(sinp*self._cosxp - cosp*self._sinxp)
-		z = r*cost
-		
-		x1 = x*self._cosxt + z*self._sinxt
-		z1 = z*self._cosxt - x*self._sinxt	
-	
-		#some other bits we need for the model
-		rho1 = np.sqrt(x1*x1 + y1*y1)
-		abs_z1 = np.abs(z1)
-			
-		return x1,y1,z1,rho1,abs_z1,cost,sint,cosp,sinp	
-		
-
-
-	def _ConvOutputPol(self,cost,sint,cosp,sinp,x1,y1,rho1,Brho1,Bphi1,Bz1):
-		'''
-		Convert the output magnetic field from cylindrical current 
-		sheet coordinates to spherical polar right-handed System III
-		coordinates.
-		
-		Inputs
-		======
-		cost : float
-			cos(theta) - where theta is the colatitude
-		sint : float
-			sin(theta)
-		cosp : float
-			cos(phi) - where phi is east longitude
-		sinp : float	
-			sin(phi)
-		x1 : float
-			x-position in current sheet coords (Rj).
-		y1 : float
-			y-position in current sheet coords (Rj).
-		rho1 : float
-			distance from z-axis (Rj).
-		Brho1 : float	
-			Rho component of magnetic field (nT).
-		Bphi1 : float
-			Phi (azimuthal) component of the magnetic field (nT).
-		Bz1 : float
-			z component of the magnetic field (nT).
-			
-		Returns
-		=======
-		Br : float
-			Radial component of magnetic field in right-handed System 
-			III coordinates (nT).
-		Bt : float
-			Meridional component of magnetic field in right-handed 
-			System III coordinates (nT).
-		Bp : float
-			Azimuthal component of magnetic field in right-handed System 
-			III coordinates (nT).
-			
-		
-		'''		
-		
-		#this now runs in about 60% of the time it used to
-		cosphi1 = x1/rho1
-		sinphi1 = y1/rho1
-		
-		Bx1 = Brho1*cosphi1 - Bphi1*sinphi1
-		By1 = Brho1*sinphi1 + Bphi1*cosphi1 		
-
-		Bx = Bx1*self._cosxt - Bz1*self._sinxt
-		Bz = Bx1*self._sinxt + Bz1*self._cosxt		
-
-		Bx2 = Bx*self._cosxp - By1*self._sinxp
-		By2 = By1*self._cosxp + Bx*self._sinxp	
-
-		Br =  Bx2*sint*cosp+By2*sint*sinp+Bz*cost
-		Bt =  Bx2*cost*cosp+By2*cost*sinp-Bz*sint
-		Bp = -Bx2*     sinp+By2*     cosp
-	
-		return Br,Bt,Bp
 
 		
 	def _CheckInputCart(self,x,y,z):
@@ -1073,37 +837,35 @@ class Model(object):
 		'''
 		t0 = time.time()
 		#rotate and check input SIII coordinates to current sheet coords
-		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,in2,self._cosxp,self._sinxp,self._cosxt,self._sinxt)
+		x,y,z,rho,abs_z,cost,sint,cosp,sinp = self._InputConv(in0,in1,
+											in2,self._cosxp,self._sinxp,
+											self._cosxt,self._sinxt)
 		t1 = time.time()
 		
 		#create the output arrays
 		n = np.size(rho)
 		Bout = np.zeros((n,3),dtype='float64')
 		
-		#Brho = np.zeros(n,dtype='float64')
-		#Bphi = np.zeros(n,dtype='float64')
-		#Bz = np.zeros(n,dtype='float64')
-			
+		
 		#call the model function
 		Brho,Bphi,Bz = self._ModelFunc(rho,abs_z,z)
 		t2 = time.time()
 		   
 		#return to SIII coordinates
-		B0,B1,B2 = self._OutputConv(cost,sint,cosp,sinp,x,y,rho,Brho,Bphi,Bz,self._cosxp,self._sinxp,self._cosxt,self._sinxt)
+		Bout[:,0],Bout[:,1],Bout[:,2] = self._OutputConv(cost,sint,cosp,
+											sinp,x,y,rho,Brho,Bphi,Bz,
+											self._cosxp,self._sinxp,
+											self._cosxt,self._sinxt)
 		t3 = time.time()
 		#turn into a nx3 array
-		Bout[:,0] = B0
-		Bout[:,1] = B1
-		Bout[:,2] = B2
-		t4 = time.time()
+
 		
 		print('-------------------------------------------------------')
 		print('Field Timing:')
 		print('-------------------------------------------------------')
-		print('Coordinate conversion: {:f}μs ({:6.2f}%)'.format((t1-t0)*1e6,100*(t1-t0)/(t4-t0)))
-		print('Call Model: {:f}μs ({:6.2f}%)'.format((t2-t1)*1e6,100*(t2-t1)/(t4-t0)))
-		print('Output Conversion: {:f}μs ({:6.2f}%)'.format((t3-t2)*1e6,100*(t3-t2)/(t4-t0)))
-		print('Output Array Fill: {:f}μs ({:6.2f}%)'.format((t4-t3)*1e6,100*(t4-t3)/(t4-t0)))
-		print('Total: {:f}μs'.format((t4-t0)*1e6))
+		print('Coordinate conversion: {:f}μs ({:6.2f}%)'.format((t1-t0)*1e6,100*(t1-t0)/(t3-t0)))
+		print('Call Model: {:f}μs ({:6.2f}%)'.format((t2-t1)*1e6,100*(t2-t1)/(t3-t0)))
+		print('Output Conversion: {:f}μs ({:6.2f}%)'.format((t3-t2)*1e6,100*(t3-t2)/(t3-t0)))
+		print('Total: {:f}μs'.format((t3-t0)*1e6))
 
 		return Bout
