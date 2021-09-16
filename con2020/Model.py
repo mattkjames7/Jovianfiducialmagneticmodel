@@ -6,6 +6,7 @@ from ._Conv import _ConvInputCart,_ConvInputPol,_ConvOutputCart,_ConvOutputPol
 from ._Integrate import _Integrate
 import time
 from numba import njit,jit
+from ._Integral import _IntegralScalar
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -584,6 +585,11 @@ class Model(object):
 		#check2 thing and it makes zc an index in range 0 to 5 as 
 		#opposed to the zcase 1 to 6, so zi = zcase -1
 		zc -= np.int(check2)
+		
+		return _IntegralScalar(rho,z,abs_z,self.d,self.mu_i,
+					self._lambda_int_brho[zc],self._lambda_int_bz[zc],
+					self._beselj_rho_r0_0[zc],self._beselj_z_r0_0[zc],
+					self._dlambda_brho,self._dlambda_bz)
 		
 		#do the integration
 		beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho)
