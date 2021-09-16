@@ -1,9 +1,9 @@
 import numpy as np
-import numba
+from numba import njit
 from scipy.special import j0,j1
 from ._Integrate import _Integrate
 
-@numba.njit
+@njit
 def _callj0(z):
 	y = np.empty_like(z) 
 	n = len(z) 
@@ -11,7 +11,7 @@ def _callj0(z):
 		y[i] = j0(z[i])  
 	return y 
 
-@numba.njit
+@njit
 def _callj1(z):
 	y = np.empty_like(z) 
 	n = len(z) 
@@ -21,15 +21,18 @@ def _callj1(z):
 
 
 
-@numba.njit
+@njit
 def _IntegralScalar(rho,z,abs_z,d,mu_i,
 					lambda_int_brho,lambda_int_bz,
 					beselj_rho_r0_0,beselj_z_r0_0,
 					dlambda_brho,dlambda_bz):
-
+	'''
+	This function is called by the Model._IntegrateScalar function - 
+	this avoids having to work out how to @jit the entire Model object
+	
+	'''
 	#do the integration
-	lr = lambda_int_brho*rho
-	beselj_rho_rho1_1 = _callj1(lr)
+	beselj_rho_rho1_1 = _callj1(lambda_int_brho*rho)
 	beselj_z_rho1_0   = _callj0(lambda_int_bz*rho)
 	if (abs_z > d): #% Connerney et al. 1981 eqs. 14 and 15
 		brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0 \
@@ -55,4 +58,25 @@ def _IntegralScalar(rho,z,abs_z,d,mu_i,
 		Brho = mu_i*2.0*_Integrate(brho_int_funct,dlambda_brho)#
 	Bz = mu_i*2.0*_Integrate(bz_int_funct,dlambda_bz)
 
+	return Brho,Bz
+	
+@njit
+def _IntegralVector(rho,z,abs_z,d,mu_i,
+					lambda_int_brho,lambda_int_bz,
+					beselj_rho_r0_0,beselj_z_r0_0,
+					dlambda_brho,dlambda_bz):
+	'''
+	This function is called by the Model._IntegrateVector function - 
+	this avoids having to work out how to @jit the entire Model object
+	
+	'''	
+	Brho = np.empty_like(rho)
+	Bz = np.empty_like(z)
+	n = len(rho)
+	for i in range(0,n):
+		Brho[i],Bz[i] = _IntegralScalar(rho[i],z[i],abs_z[i],d,mu_i,
+									lambda_int_brho,lambda_int_bz,
+									beselj_rho_r0_0,beselj_z_r0_0,
+									dlambda_brho,dlambda_bz)	
+	
 	return Brho,Bz

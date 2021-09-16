@@ -6,7 +6,7 @@ from ._Conv import _ConvInputCart,_ConvInputPol,_ConvOutputCart,_ConvOutputPol
 from ._Integrate import _Integrate
 import time
 from numba import njit,jit
-from ._Integral import _IntegralScalar
+from ._Integral import _IntegralScalar,_IntegralVector
 
 class Model(object):
 	def __init__(self,**kwargs):
@@ -659,35 +659,40 @@ class Model(object):
 			zc = zcase - 1
 			
 			if n_ind_case > 0:
+				Brho[ind_case],Bz[ind_case] = \
+					_IntegralVector(rho[ind_case],z[ind_case],
+					abs_z[ind_case],self.d,self.mu_i,
+					self._lambda_int_brho[zc],self._lambda_int_bz[zc],
+					self._beselj_rho_r0_0[zc],self._beselj_z_r0_0[zc],
+					self._dlambda_brho,self._dlambda_bz)
+				# for zi in range(0,n_ind_case):
+					# ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
 
-				for zi in range(0,n_ind_case):
-					ind_for_integral = ind_case[zi] #;% sub-indices of sub-indices!
-
-					beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho[ind_for_integral])
-					beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho[ind_for_integral] )
-					if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
-						brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
-										*np.sinh(self.d*self._lambda_int_brho[zc]) \
-										*np.exp(-abs_z[ind_for_integral]*self._lambda_int_brho[zc]) \
-										/self._lambda_int_brho[zc]
-						bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
-										*np.sinh(self.d*self._lambda_int_bz[zc]) \
-										*np.exp(-abs_z[ind_for_integral]*self._lambda_int_bz[zc]) \
-										/self._lambda_int_bz[zc]
-						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
-						if z[ind_for_integral] < 0:
-							Brho[ind_for_integral] = -Brho[ind_for_integral]
-					else:
-						brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
-										*(np.sinh(z[ind_for_integral]*self._lambda_int_brho[zc]) \
-										*np.exp(-self.d*self._lambda_int_brho[zc])) \
-										/self._lambda_int_brho[zc]
-						bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
-										*(1.0 -np.cosh(z[ind_for_integral]*self._lambda_int_bz[zc]) \
-										*np.exp(-self.d*self._lambda_int_bz[zc])) \
-										/self._lambda_int_bz[zc]  
-						Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
-					Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
+					# beselj_rho_rho1_1 = j1(self._lambda_int_brho[zc]*rho[ind_for_integral])
+					# beselj_z_rho1_0   = j0(self._lambda_int_bz[zc]*rho[ind_for_integral] )
+					# if (abs_z[ind_for_integral] > self.d): #% Connerney et al. 1981 eqs. 14 and 15
+						# brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+										# *np.sinh(self.d*self._lambda_int_brho[zc]) \
+										# *np.exp(-abs_z[ind_for_integral]*self._lambda_int_brho[zc]) \
+										# /self._lambda_int_brho[zc]
+						# bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
+										# *np.sinh(self.d*self._lambda_int_bz[zc]) \
+										# *np.exp(-abs_z[ind_for_integral]*self._lambda_int_bz[zc]) \
+										# /self._lambda_int_bz[zc]
+						# Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
+						# if z[ind_for_integral] < 0:
+							# Brho[ind_for_integral] = -Brho[ind_for_integral]
+					# else:
+						# brho_int_funct = beselj_rho_rho1_1*self._beselj_rho_r0_0[zc] \
+										# *(np.sinh(z[ind_for_integral]*self._lambda_int_brho[zc]) \
+										# *np.exp(-self.d*self._lambda_int_brho[zc])) \
+										# /self._lambda_int_brho[zc]
+						# bz_int_funct   = beselj_z_rho1_0*self._beselj_z_r0_0[zc] \
+										# *(1.0 -np.cosh(z[ind_for_integral]*self._lambda_int_bz[zc]) \
+										# *np.exp(-self.d*self._lambda_int_bz[zc])) \
+										# /self._lambda_int_bz[zc]  
+						# Brho[ind_for_integral] = self.mu_i*2.0*_Integrate(brho_int_funct,self._dlambda_brho)
+					# Bz[ind_for_integral]   = self.mu_i*2.0*_Integrate(bz_int_funct,self._dlambda_bz)
 		
 		return Brho,Bz			
 	
