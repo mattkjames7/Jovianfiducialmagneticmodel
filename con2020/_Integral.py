@@ -1,16 +1,36 @@
 import numpy as np
-from numba import njit,jit
+import numba
 from scipy.special import j0,j1
 from ._Integrate import _Integrate
 
+@numba.njit
+def _callj0(z):
+	y = np.empty_like(z) 
+	n = len(z) 
+	for i in range(0,n): 
+		y[i] = j0(z[i])  
+	return y 
+
+@numba.njit
+def _callj1(z):
+	y = np.empty_like(z) 
+	n = len(z) 
+	for i in range(0,n): 
+		y[i] = j1(z[i])  
+	return y 
+
+
+
+@numba.njit
 def _IntegralScalar(rho,z,abs_z,d,mu_i,
 					lambda_int_brho,lambda_int_bz,
 					beselj_rho_r0_0,beselj_z_r0_0,
 					dlambda_brho,dlambda_bz):
 
 	#do the integration
-	beselj_rho_rho1_1 = j1(lambda_int_brho*rho)
-	beselj_z_rho1_0   = j0(lambda_int_bz*rho)
+	lr = lambda_int_brho*rho
+	beselj_rho_rho1_1 = _callj1(lr)
+	beselj_z_rho1_0   = _callj0(lambda_int_bz*rho)
 	if (abs_z > d): #% Connerney et al. 1981 eqs. 14 and 15
 		brho_int_funct = beselj_rho_rho1_1*beselj_rho_r0_0 \
 							*np.sinh(d*lambda_int_brho) \

@@ -1,5 +1,7 @@
 import numpy as np
+from numba import njit
 
+@njit
 def _Integrate(j,dl):
 	'''
 	Integrate j assuming constant dl
