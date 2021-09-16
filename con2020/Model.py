@@ -760,31 +760,21 @@ class Model(object):
 			z-component of the magnetic field.
 		
 		'''
-		t0 = time.time()
+
 		#calculate the analytic solution first for Brho and Bz
 		Brho,Bz = _AnalyticEdwards(rho,z,self.d,self.r0,self.mu_i)
-		t1 = time.time()
+
 		#calculate Bphi
 		Bphi = self._Bphi(rho,abs_z,z)
-		t2 = time.time()
+
 		#subtract outer edge contribution
 		Brho_fin,Bz_fin = _AnalyticEdwards(rho,z,self.d,self.r1,self.mu_i)
-		t3 = time.time()
+
 		#Bphi_fin = -self.i_rho*Brho_fin/self.mu_i
 		Brho -= Brho_fin
 		#Bphi -= Bphi_fin
 		Bz -= Bz_fin
-		t4 = time.time()
 
-		print('-------------------------------------------------------')
-		print('_Analytic Timing:')
-		print('-------------------------------------------------------')
-		print('Call analytic function: {:f}μs ({:6.2f}%)'.format((t1-t0)*1e6,100*(t1-t0)/(t4-t0)))
-		print('Call _Bphi function: {:f}μs ({:6.2f}%)'.format((t2-t1)*1e6,100*(t2-t1)/(t4-t0)))
-		print('Call _Finite function: {:f}μs ({:6.2f}%)'.format((t3-t2)*1e6,100*(t3-t2)/(t4-t0)))
-		print('Subtract _Finite output: {:f}μs ({:6.2f}%)'.format((t4-t3)*1e6,100*(t4-t3)/(t4-t0)))
-		print('Total: {:f}μs'.format((t4-t0)*1e6))
-		
 		return Brho,Bphi,Bz
 		
 		
