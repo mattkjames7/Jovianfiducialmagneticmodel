@@ -49,6 +49,8 @@ setuptools.setup(
 		'numpy',
 		'scipy',
 		'matplotlib',
+		'numba',
+		'numba-scipy',
 	],
 	include_package_data=True,
 )
