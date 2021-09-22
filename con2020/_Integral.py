@@ -1,5 +1,5 @@
 import numpy as np
-from numba import njit
+from numba import njit,vectorize
 from scipy.special import j0,j1
 from ._Integrate import _Integrate
 
@@ -18,6 +18,14 @@ def _callj1(z):
 	for i in range(0,n): 
 		y[i] = j1(z[i])  
 	return y 
+
+@vectorize(["float64(float64)"],target='parallel')
+def _callj0v(z):
+	return j0(z)
+
+@vectorize(["float64(float64)"],target='parallel')
+def _callj1v(z):
+	return j1(z) 
 
 
 
